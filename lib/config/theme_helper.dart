@@ -38,6 +38,22 @@ class ThemeHelper {
   static List<Color> get errorGradient => [errorLight, errorDark];
   static List<Color> get successGradient => [successLight, successDark];
 
+  // Dark mode gradients
+  static List<Color> get darkPrimaryGradient =>
+      [Colors.blue.shade400, Colors.purple.shade300];
+  static List<Color> get darkSecondaryGradient =>
+      [Colors.purple.shade300, Colors.blue.shade400];
+  static List<Color> get darkAccentGradient =>
+      [Colors.blue.shade300, Colors.purple.shade200];
+
+  // Light mode gradients
+  static List<Color> get lightPrimaryGradient =>
+      [Colors.purple.shade900, Colors.blue.shade900];
+  static List<Color> get lightSecondaryGradient =>
+      [Colors.blue.shade900, Colors.purple.shade800];
+  static List<Color> get lightAccentGradient =>
+      [Colors.purple.shade800, Colors.blue.shade800];
+
   // Get gradient
   static LinearGradient getGradient(
     List<Color> colors, {
@@ -134,9 +150,21 @@ class ThemeHelper {
       appBarTheme: AppBarTheme(
         elevation: 0,
         centerTitle: false,
-        backgroundColor: colorScheme.surface,
-        foregroundColor: colorScheme.onSurface,
-        iconTheme: IconThemeData(color: colorScheme.onSurface),
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          shadows: [
+            Shadow(
+              color: Colors.black26,
+              offset: Offset(0, 2),
+              blurRadius: 4,
+            ),
+          ],
+        ),
       ),
       textTheme: TextTheme(
         titleLarge: TextStyle(

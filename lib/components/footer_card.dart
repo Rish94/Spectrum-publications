@@ -1,133 +1,145 @@
 import 'package:flutter/material.dart';
-import 'package:spectrum_app/components/text_style.dart';
-import 'package:spectrum_app/config/theme_helper.dart';
+import 'package:provider/provider.dart';
+import 'package:spectrum_app/providers/metadata_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class FooterCard extends StatelessWidget {
   const FooterCard({super.key});
 
+  Future<void> _launchUrl(String url) async {
+    if (!await launchUrl(Uri.parse(url))) {
+      throw Exception('Could not launch $url');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final metadataProvider = Provider.of<MetadataProvider>(context);
+    final metadata = metadataProvider.metadata;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final colorScheme = Theme.of(context).colorScheme;
+
+    if (metadataProvider.isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (metadataProvider.error != null) {
+      return Center(
+        child: Text(
+          'Error loading metadata: ${metadataProvider.error}',
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
+      );
+    }
+
+    if (metadata == null) {
+      return const SizedBox.shrink();
+    }
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDarkMode ? colorScheme.surface : colorScheme.primary,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(40),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDarkMode
+              ? [
+                  const Color(0xFF4158D0).withOpacity(0.2),
+                  const Color(0xFFC850C0).withOpacity(0.1),
+                ]
+              : [
+                  const Color(0xFFBBDEFB), // Light Blue 200
+                  const Color(0xFF90CAF9), // Light Blue 300
+                ],
         ),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            "Spectrum Publications",
-            style: Text_Style.large(
-              fontSize: 25,
-              fontWeight: FontWeight.w800,
-            ).copyWith(
-              color: isDarkMode ? colorScheme.onSurface : Colors.white,
+            metadata.name,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.white : Colors.black87,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            "Empowering Education Through Innovation",
-            style: Text_Style.small().copyWith(
-              color: isDarkMode
-                  ? colorScheme.onSurface.withOpacity(0.8)
-                  : Colors.white.withOpacity(0.8),
+            metadata.tagline,
+            style: TextStyle(
+              fontSize: 16,
+              color: isDarkMode ? Colors.white70 : Colors.black54,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildSocialIcon(
-                Icons.facebook,
-                () {},
-                const Color(0xFF1877F2),
-                isDarkMode,
-              ),
-              const SizedBox(width: 16),
-              _buildSocialIcon(
-                Icons.telegram,
-                () {},
-                const Color(0xFF0088CC),
-                isDarkMode,
-              ),
-              const SizedBox(width: 16),
-              _buildSocialIcon(
-                Icons.message,
-                () {},
-                const Color(0xFF25D366),
-                isDarkMode,
-              ),
-              const SizedBox(width: 16),
-              _buildSocialIcon(
-                Icons.youtube_searched_for,
-                () {},
-                const Color(0xFFFF0000),
-                isDarkMode,
-              ),
+              if (metadata.facebookUrl.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.facebook),
+                  onPressed: () => _launchUrl(metadata.facebookUrl),
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                ),
+              if (metadata.socialUrl.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.camera_alt),
+                  onPressed: () => _launchUrl(metadata.socialUrl),
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                ),
+              if (metadata.webUrl.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.language),
+                  onPressed: () => _launchUrl(metadata.webUrl),
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                ),
+              if (metadata.playstoreUrl.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.android),
+                  onPressed: () => _launchUrl(metadata.playstoreUrl),
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                ),
             ],
           ),
-          const SizedBox(height: 24),
-          Text(
-            "Connect With Us",
-            style: Text_Style.medium().copyWith(
-              color: isDarkMode
-                  ? colorScheme.onSurface.withOpacity(0.9)
-                  : Colors.white.withOpacity(0.9),
-            ),
-          ),
           const SizedBox(height: 16),
-          FittedBox(
-            child: Text(
-              "Copyright © Spectrum Publications ${DateTime.now().year}. All Rights Reserved",
-              style: Text_Style.small().copyWith(
-                color: isDarkMode
-                    ? colorScheme.onSurface.withOpacity(0.6)
-                    : Colors.white.withOpacity(0.6),
-              ),
-            ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (metadata.email.isNotEmpty)
+                TextButton.icon(
+                  icon: const Icon(Icons.email),
+                  label: Text(metadata.email),
+                  onPressed: () => _launchUrl('mailto:${metadata.email}'),
+                  style: TextButton.styleFrom(
+                    foregroundColor:
+                        isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+              if (metadata.mobile.isNotEmpty)
+                TextButton.icon(
+                  icon: const Icon(Icons.phone),
+                  label: Text(metadata.mobile),
+                  onPressed: () => _launchUrl('tel:${metadata.mobile}'),
+                  style: TextButton.styleFrom(
+                    foregroundColor:
+                        isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+            ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSocialIcon(
-      IconData icon, VoidCallback onTap, Color brandColor, bool isDarkMode) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isDarkMode
-              ? brandColor.withOpacity(0.1)
-              : Colors.white.withOpacity(0.2),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: isDarkMode
-                ? brandColor.withOpacity(0.3)
-                : Colors.white.withOpacity(0.3),
-            width: 1,
-          ),
-        ),
-        child: Icon(
-          icon,
-          color: isDarkMode ? brandColor : Colors.white,
-          size: 24,
-        ),
       ),
     );
   }
