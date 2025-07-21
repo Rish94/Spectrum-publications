@@ -23,8 +23,8 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build AAB
-        run: flutter build appbundle
+      - name: Build Unsigned AAB
+        run: flutter build appbundle --no-shrink --debug
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
