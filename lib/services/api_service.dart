@@ -121,12 +121,12 @@ class ApiService {
   }
 
   // Get subjects by series ID
-  Future<List<dynamic>> getSubjectsBySeries(String seriesId) async {
+  Future<List<dynamic>> getSubjectsBySeries(String seriesId,String classId) async {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.getSubjects}'),
         headers: {'Content-Type': ApiConfig.contentType},
-        body: json.encode({'seriesId': int.parse(seriesId)}),
+        body: json.encode({'seriesId': int.parse(seriesId),'classId' : int.parse(classId)}),
       );
 
       if (response.statusCode == 201) {

@@ -86,7 +86,7 @@ class _SubjectsPageState extends State<SubjectsPage>
 
     try {
       final subjectsData =
-          await _apiService.getSubjectsBySeries(widget.seriesId);
+          await _apiService.getSubjectsBySeries(widget.seriesId,widget.classId);
       if (!mounted) return;
 
       setState(() {
