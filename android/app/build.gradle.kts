@@ -28,7 +28,7 @@ android {
 
     defaultConfig {
         applicationId = "com.spectrum_app"
-        minSdk = 21 // Manually set to 21 for 16KB support
+        minSdk = flutter.minSdkVersion // Manually set to 21 for 16KB support
         targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
