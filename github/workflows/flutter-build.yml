@@ -10,18 +10,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Set up Flutter
+      - name: Setup Flutter (Default)
         uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.19.0'
 
-      - name: Install dependencies
+      - name: Check Flutter Version
+        run: flutter --version
+
+      - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build APK
+      - name: Build Release APK
         run: flutter build apk --release
 
       - name: Upload APK
@@ -29,4 +30,3 @@ jobs:
         with:
           name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-
