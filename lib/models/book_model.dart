@@ -1,3 +1,5 @@
+import 'package:spectrum_app/config/api_config.dart';
+
 class BookModel {
   final int id;
   final String name;
@@ -59,7 +61,6 @@ class BookFile {
   final String basePath;
   final String fileType;
   final BookType? bookType;
-  static const String baseUrl = 'http://164.52.218.45:5000';
 
   BookFile({
     required this.id,
@@ -90,7 +91,9 @@ class BookFile {
 
   String? getFilePath() {
     if (basePath.isNotEmpty) {
-      return '$baseUrl/$basePath';
+      final base = ApiConfig.baseUrl.replaceFirst(RegExp(r'/$'), '');
+      final path = basePath.replaceFirst(RegExp(r'^/'), '');
+      return '$base/$path';
     } else if (link != null && link!.isNotEmpty) {
       return link;
     }

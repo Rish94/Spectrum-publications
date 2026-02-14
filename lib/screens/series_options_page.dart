@@ -71,7 +71,7 @@ class _SeriesOptionsPageState extends State<SeriesOptionsPage> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       endDrawer: const AppDrawer(currentRoute: '/series'),
       appBar: CustomAppBar(
         title: '${widget.seriesName} - Options',
@@ -105,8 +105,8 @@ class _SeriesOptionsPageState extends State<SeriesOptionsPage> {
                       const Color(0xFF2C2C2C),
                     ]
                   : [
-                      colorScheme.background,
-                      colorScheme.background.withOpacity(0.95),
+                      colorScheme.surface,
+                      colorScheme.surface.withOpacity(0.95),
                     ],
               isVertical: true,
             ),
@@ -198,6 +198,7 @@ class _SeriesOptionsPageState extends State<SeriesOptionsPage> {
 
     return Card(
       elevation: isDarkMode ? 2 : 4,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
@@ -248,12 +249,13 @@ class _SeriesOptionsPageState extends State<SeriesOptionsPage> {
               ),
               // Content
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: isDarkMode
                             ? Colors.white.withOpacity(0.1)
@@ -271,32 +273,36 @@ class _SeriesOptionsPageState extends State<SeriesOptionsPage> {
                       ),
                       child: Icon(
                         contentType.getIcon(),
-                        size: 32,
+                        size: 28,
                         color: contentType.getGradient()[0],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     Text(
                       contentType.typeName,
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: isDarkMode ? Colors.white : Colors.black87,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     if (contentType.description.isNotEmpty) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         contentType.description,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           color: isDarkMode
                               ? Colors.white.withOpacity(0.7)
                               : Colors.black54,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,

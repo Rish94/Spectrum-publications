@@ -85,7 +85,7 @@ class _SeriesPageState extends State<SeriesPage> {
 
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       endDrawer: const AppDrawer(currentRoute: '/series'),
       appBar: CustomAppBar(
         title: '$_selectedLanguage Series',
@@ -112,8 +112,8 @@ class _SeriesPageState extends State<SeriesPage> {
           decoration: BoxDecoration(
             gradient: ThemeHelper.getGradient(
               [
-                colorScheme.background,
-                colorScheme.background.withOpacity(0.95),
+                colorScheme.surface,
+                colorScheme.surface.withOpacity(0.95),
               ],
               isVertical: true,
             ),
@@ -273,68 +273,74 @@ class _SeriesPageState extends State<SeriesPage> {
                                                     bottom: Radius.circular(20),
                                                   ),
                                                 ),
-                                                child: Column(
-                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                                  children: [
-                                                    Column(
-                                                      children: [
-                                                        Text(
-                                                          series.name,
-                                                          style: const TextStyle(
-                                                            fontSize: 16,
-                                                            fontWeight: FontWeight.bold,
-                                                            color: Colors.white,
-                                                            letterSpacing: 0.5,
-                                                          ),
-                                                          maxLines: 2,
-                                                          overflow: TextOverflow.ellipsis,
-                                                          textAlign: TextAlign.center,
-                                                        ),
-                                                        if (series.description != null) ...[
-                                                          const SizedBox(height: 4),
+                                                child: SingleChildScrollView(
+                                                  physics: const ClampingScrollPhysics(),
+                                                  child: Column(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                                    children: [
+                                                      Column(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
                                                           Text(
-                                                            series.description!,
-                                                            style: TextStyle(
-                                                              fontSize: 12,
-                                                              color: Colors.white.withOpacity(0.8),
-                                                              height: 1.2,
+                                                            series.name,
+                                                            style: const TextStyle(
+                                                              fontSize: 16,
+                                                              fontWeight: FontWeight.bold,
+                                                              color: Colors.white,
+                                                              letterSpacing: 0.5,
                                                             ),
                                                             maxLines: 2,
                                                             overflow: TextOverflow.ellipsis,
                                                             textAlign: TextAlign.center,
                                                           ),
-                                                        ],
-                                                      ],
-                                                    ),
-                                                    Container(
-                                                      padding: const EdgeInsets.symmetric(
-                                                          horizontal: 10, vertical: 4),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.white.withOpacity(0.2),
-                                                        borderRadius: BorderRadius.circular(20),
-                                                      ),
-                                                      child: Row(
-                                                        mainAxisSize: MainAxisSize.min,
-                                                        children: [
-                                                          const Icon(
-                                                            Icons.arrow_forward_rounded,
-                                                            color: Colors.white,
-                                                            size: 14,
-                                                          ),
-                                                          const SizedBox(width: 4),
-                                                          Text(
-                                                            'View Details',
-                                                            style: TextStyle(
-                                                              color: Colors.white.withOpacity(0.9),
-                                                              fontSize: 11,
-                                                              fontWeight: FontWeight.w500,
+                                                          if (series.description != null) ...[
+                                                            const SizedBox(height: 4),
+                                                            Text(
+                                                              series.description!,
+                                                              style: TextStyle(
+                                                                fontSize: 12,
+                                                                color: Colors.white.withOpacity(0.8),
+                                                                height: 1.2,
+                                                              ),
+                                                              maxLines: 2,
+                                                              overflow: TextOverflow.ellipsis,
+                                                              textAlign: TextAlign.center,
                                                             ),
-                                                          ),
+                                                          ],
                                                         ],
                                                       ),
-                                                    ),
-                                                  ],
+                                                      const SizedBox(height: 8),
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(
+                                                            horizontal: 10, vertical: 4),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.white.withOpacity(0.2),
+                                                          borderRadius: BorderRadius.circular(20),
+                                                        ),
+                                                        child: Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            const Icon(
+                                                              Icons.arrow_forward_rounded,
+                                                              color: Colors.white,
+                                                              size: 14,
+                                                            ),
+                                                            const SizedBox(width: 4),
+                                                            Text(
+                                                              'View Details',
+                                                              style: TextStyle(
+                                                                color: Colors.white.withOpacity(0.9),
+                                                                fontSize: 11,
+                                                                fontWeight: FontWeight.w500,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
                                             ),

@@ -61,8 +61,8 @@ class _BooksPageState extends State<BooksPage> {
     });
 
     try {
-      final booksData = await _apiService.getBooksByClassAndType(
-        widget.classId,
+      final booksData = await _apiService.getBooksBySubjectAndType(
+        widget.subjectId,
         widget.typeId,
       );
       if (!mounted) return;
@@ -71,8 +71,6 @@ class _BooksPageState extends State<BooksPage> {
         _books = booksData.map((data) => BookModel.fromJson(data)).toList();
         _isLoading = false;
       });
-
-      print(booksData);
     } catch (e) {
       if (!mounted) return;
 
@@ -149,7 +147,7 @@ class _BooksPageState extends State<BooksPage> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       endDrawer: const AppDrawer(currentRoute: '/books'),
       appBar: CustomAppBar(
         title:
@@ -184,8 +182,8 @@ class _BooksPageState extends State<BooksPage> {
                       const Color(0xFF2C2C2C),
                     ]
                   : [
-                      colorScheme.background,
-                      colorScheme.background.withOpacity(0.95),
+                      colorScheme.surface,
+                      colorScheme.surface.withOpacity(0.95),
                     ],
               isVertical: true,
             ),

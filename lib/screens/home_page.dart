@@ -21,7 +21,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
-  bool _isLoading = true;
+  final bool _isLoading = true;
   String? _error;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   List<String> temp = [
@@ -97,11 +97,12 @@ class _HomePageState extends State<HomePage>
     _scrollController.addListener(_onScroll);
 
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1200),
       vsync: this,
     )..repeat(reverse: true);
 
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+    // Subtle bounce: 1.0 -> 1.04 so cards don't overlap
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.04).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: Curves.easeInOut,
@@ -135,7 +136,7 @@ class _HomePageState extends State<HomePage>
       child: Scaffold(
         key: _scaffoldKey,
         backgroundColor:
-            isDarkMode ? const Color(0xFF1A1A1A) : colorScheme.background,
+            isDarkMode ? const Color(0xFF1A1A1A) : colorScheme.surface,
         endDrawer: const AppDrawer(currentRoute: '/'),
         body: Stack(
           children: [
