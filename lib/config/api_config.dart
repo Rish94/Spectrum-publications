@@ -1,4 +1,5 @@
 class ApiConfig {
+  /// Production. For local backend use: 'http://localhost:3000'
   static const String baseUrl = 'https://app.spectrumpublication.in';
   static const String contentType = 'application/json';
 

@@ -25,7 +25,7 @@ class BookModel {
 
   String? get pdfFile {
     final pdfFile = bookFiles.firstWhere(
-      (file) => file.bookType?.contentType?.toLowerCase() == 'pdf',
+      (file) => file.bookType?.contentType.toLowerCase() == 'pdf',
       orElse: () => BookFile.empty(),
     );
     return pdfFile.getFilePath();
@@ -33,7 +33,7 @@ class BookModel {
 
   String? get videoFile {
     final videoFile = bookFiles.firstWhere(
-      (file) => file.bookType?.contentType?.toLowerCase() == 'video',
+      (file) => file.bookType?.contentType.toLowerCase() == 'video',
       orElse: () => BookFile.empty(),
     );
     return videoFile.getFilePath();
@@ -43,7 +43,7 @@ class BookModel {
     if (bookFiles.isEmpty) return null;
 
     final file = bookFiles.first;
-    final contentType = file.bookType?.contentType?.toLowerCase();
+    final contentType = file.bookType?.contentType.toLowerCase();
 
     if (contentType == 'pdf' || contentType == 'video') {
       return file.getFilePath();
@@ -97,8 +97,8 @@ class BookFile {
     return null;
   }
 
-  bool get isPdf => bookType?.contentType?.toLowerCase() == 'pdf';
-  bool get isVideo => bookType?.contentType?.toLowerCase() == 'video';
+  bool get isPdf => bookType?.contentType.toLowerCase() == 'pdf';
+  bool get isVideo => bookType?.contentType.toLowerCase() == 'video';
 }
 
 class BookType {

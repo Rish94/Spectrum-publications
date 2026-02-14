@@ -50,7 +50,7 @@ class ApiService {
   // Get series by medium (Hindi/English)
   Future<List<dynamic>> getSeriesByMedium(String medium) async {
     try {
-      print("$medium");
+      print(medium);
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.getSeries}'),
         headers: {'Content-Type': ApiConfig.contentType},
@@ -144,29 +144,83 @@ class ApiService {
     }
   }
 
-  // Get books by class ID and type ID
-  Future<List<dynamic>> getBooksByClassAndType(
-      String classId, String typeId) async {
+  // Get books by subject ID and type ID (POST /mobile-apis/books)
+  // Body: {"typeId": <int>, "subjectId": <int>}
+  Future<List<dynamic>> getBooksBySubjectAndType(
+      String subjectId, String typeId) async {
     try {
+      final subjectIdInt = int.tryParse(subjectId);
+      final typeIdInt = int.tryParse(typeId);
+      if (subjectIdInt == null || typeIdInt == null) {
+        throw Exception(
+          'Invalid IDs: subjectId="$subjectId" typeId="$typeId". Both must be numeric.',
+        );
+      }
+
+      // Some backends expect snake_case; try camelCase first, then snake_case
+      final body = json.encode({
+        'typeId': typeIdInt,
+        'subjectId': subjectIdInt,
+      });
+
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}${ApiConfig.getBooks}'),
-        headers: {'Content-Type': ApiConfig.contentType},
-        body: json.encode({
-          'classId': int.parse(classId),
-          'typeId': int.parse(typeId),
-        }),
+        headers: {
+          'Content-Type': ApiConfig.contentType,
+          'Accept': 'application/json',
+        },
+        body: body,
       );
 
-      if (response.statusCode == 201) {
+      // If 400 with camelCase, retry with snake_case (e.g. Laravel/Django)
+      if (response.statusCode == 400) {
+        final retryBody = json.encode({
+          'type_id': typeIdInt,
+          'subject_id': subjectIdInt,
+        });
+        final retryResponse = await http.post(
+          Uri.parse('${ApiConfig.baseUrl}${ApiConfig.getBooks}'),
+          headers: {
+            'Content-Type': ApiConfig.contentType,
+            'Accept': 'application/json',
+          },
+          body: retryBody,
+        );
+        if (retryResponse.statusCode == 200 || retryResponse.statusCode == 201) {
+          final retryData = json.decode(retryResponse.body);
+          if (retryData is Map<String, dynamic> &&
+              (retryData['success'] == true) &&
+              retryData['data'] != null) {
+            return (retryData['data'] as List<dynamic>?) ?? [];
+          }
+          if (retryData is List<dynamic>) return retryData;
+        }
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
-          return responseData['data'];
-        } else {
-          throw Exception('Failed to load books');
+          return responseData['data'] as List<dynamic>? ?? [];
         }
-      } else {
-        throw Exception('Failed to load books: ${response.statusCode}');
+        throw Exception('Failed to load books');
       }
+
+      // Surface server error message for 4xx/5xx
+      String message = 'Failed to load books: ${response.statusCode}';
+      try {
+        final err = json.decode(response.body);
+        if (err is Map<String, dynamic>) {
+          final msg = err['message'] ?? err['error'] ?? err['msg'];
+          if (msg != null) message = '$message — $msg';
+        }
+      } catch (_) {
+        if (response.body.isNotEmpty) message = '$message — ${response.body}';
+      }
+      if (response.statusCode == 400) {
+        message =
+            '$message (Check: app uses ${ApiConfig.baseUrl}; use same base URL as your working curl.)';
+      }
+      throw Exception(message);
     } catch (e) {
       throw Exception('Error: $e');
     }
