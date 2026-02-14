@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:spectrum_app/providers/theme_provider.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:spectrum_app/components/books/sound_manager.dart';
 import 'package:spectrum_app/components/custom_app_bar.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:spectrum_app/config/api_config.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:path_provider/path_provider.dart';
+
+import 'pdf_file_io_stub.dart' if (dart.library.io) 'pdf_file_io.dart' as pdf_file_io;
 
 class PdfViewer extends StatefulWidget {
   final String pdfUrl;
@@ -26,7 +29,10 @@ class _PdfViewerState extends State<PdfViewer>
   int _currentPage = 1;
   int _totalPages = 0;
   bool _isLoading = true;
-  String? _errorMessage;
+  String? _userMessage;
+  bool _isError = false;
+  bool _isWebMode = false;
+  double _downloadProgress = 0.0;
   String? _localPdfPath;
   final SoundManager _soundManager = SoundManager();
   late AnimationController _animationController;
@@ -35,6 +41,8 @@ class _PdfViewerState extends State<PdfViewer>
   final Dio _dio = Dio(BaseOptions(
     baseUrl: ApiConfig.baseUrl,
     contentType: ApiConfig.contentType,
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 30),
   ));
 
   @override
@@ -51,46 +59,105 @@ class _PdfViewerState extends State<PdfViewer>
         curve: Curves.easeInOut,
       ),
     );
-    _downloadAndOpenPdf();
+    _loadPdf();
   }
 
-  Future<void> _downloadAndOpenPdf() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
+  /// Returns a short, user-friendly message. Never exposes raw exceptions or status codes.
+  String _userFriendlyMessage(dynamic e) {
+    if (e is DioException) {
+      final statusCode = e.response?.statusCode;
+      if (statusCode != null) {
+        if (statusCode == 404) return 'This PDF is not available.';
+        if (statusCode == 403) return 'You don’t have access to this content.';
+        if (statusCode >= 500) return 'The server is temporarily unavailable. Please try again later.';
+        if (statusCode >= 400) return 'We couldn’t load this PDF. Please try again.';
+      }
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          return 'The request took too long. Check your connection and try again.';
+        case DioExceptionType.connectionError:
+          return 'Check your internet connection and try again.';
+        default:
+          return 'We couldn’t load the PDF. Please try again.';
+      }
+    }
+    final message = e.toString();
+    if (message.contains('MissingPluginException') ||
+        message.contains('path_provider') ||
+        message.contains('getTemporaryDirectory')) {
+      return 'Please open the app on your phone or tablet to view PDFs.';
+    }
+    if (message.contains('SocketException') || message.contains('Connection')) {
+      return 'Check your internet connection and try again.';
+    }
+    return 'Something went wrong. Please try again.';
+  }
 
-      // Get temporary directory
+  Future<void> _loadPdf() async {
+    setState(() {
+      _isLoading = true;
+      _isError = false;
+      _userMessage = null;
+      _downloadProgress = 0.0;
+      _isWebMode = false;
+    });
+
+    if (kIsWeb) {
+      setState(() {
+        _isWebMode = true;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
       final tempDir = await getTemporaryDirectory();
       final fileName = widget.pdfUrl.split('/').last;
+      if (fileName.isEmpty) throw Exception('Invalid PDF URL');
       final localPath = '${tempDir.path}/$fileName';
 
-      // Download the PDF
       await _dio.download(
         widget.pdfUrl,
         localPath,
         onReceiveProgress: (received, total) {
-          if (total != -1) {
-            final progress = (received / total * 100).toStringAsFixed(0);
+          if (total != -1 && total > 0 && mounted) {
             setState(() {
-              _errorMessage = 'Downloading: $progress%';
+              _downloadProgress = received / total;
             });
           }
         },
       );
 
+      if (!mounted) return;
       setState(() {
         _localPdfPath = localPath;
-        _errorMessage = null;
         _isLoading = false;
+        _downloadProgress = 1.0;
       });
     } catch (e) {
-      print('Error downloading PDF: $e');
+      if (!mounted) return;
       setState(() {
-        _errorMessage = 'Error downloading PDF: $e';
+        _userMessage = _userFriendlyMessage(e);
+        _isError = true;
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _openPdfInBrowser() async {
+    final uri = Uri.tryParse(widget.pdfUrl);
+    if (uri == null) return;
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _userMessage = 'Could not open the link. Please try again.';
+          _isError = true;
+        });
+      }
     }
   }
 
@@ -98,14 +165,7 @@ class _PdfViewerState extends State<PdfViewer>
   void dispose() {
     _soundManager.dispose();
     _animationController.dispose();
-    // Clean up downloaded file
-    if (_localPdfPath != null) {
-      try {
-        File(_localPdfPath!).delete();
-      } catch (e) {
-        print('Error deleting temporary PDF file: $e');
-      }
-    }
+    pdf_file_io.deletePdfFile(_localPdfPath);
     super.dispose();
   }
 
@@ -119,182 +179,245 @@ class _PdfViewerState extends State<PdfViewer>
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDarkMode = themeProvider.isDarkMode;
-    final screenWidth = MediaQuery.of(context).size.width;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? Colors.black : Colors.white,
+      backgroundColor: isDarkMode ? Colors.black : colorScheme.surface,
       appBar: CustomAppBar(
-        title: _isLoading ? 'Loading...' : 'Page $_currentPage of $_totalPages',
+        title: _isLoading
+            ? 'Loading PDF…'
+            : _isWebMode
+                ? 'PDF'
+                : 'Page $_currentPage of $_totalPages',
       ),
-      body: _isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: isDarkMode ? Colors.black54 : Colors.white70,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        if (_errorMessage != null) ...[
-                          const SizedBox(height: 16),
-                          Text(
-                            _errorMessage!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onBackground,
-                              fontSize: 16,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: _downloadAndOpenPdf,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Retry'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Theme.of(context).colorScheme.primary,
-                            foregroundColor:
-                                Theme.of(context).colorScheme.onPrimary,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+      body: _buildBody(isDarkMode, colorScheme),
+    );
+  }
+
+  Widget _buildBody(bool isDarkMode, ColorScheme colorScheme) {
+    if (_isWebMode) {
+      return _buildWebOpenInBrowser(isDarkMode, colorScheme);
+    }
+    if (_isLoading) {
+      return _buildLoadingState(isDarkMode, colorScheme);
+    }
+    if (_isError && _userMessage != null) {
+      return _buildErrorState(isDarkMode, colorScheme);
+    }
+    if (_localPdfPath != null) {
+      return _buildPdfContent(isDarkMode, colorScheme);
+    }
+    return _buildLoadingState(isDarkMode, colorScheme);
+  }
+
+  Widget _buildWebOpenInBrowser(bool isDarkMode, ColorScheme colorScheme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.picture_as_pdf_rounded,
+              size: 80,
+              color: colorScheme.primary.withOpacity(0.8),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'View PDF in browser',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: isDarkMode ? Colors.white : colorScheme.onSurface,
               ),
-            )
-          : _errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        color: Theme.of(context).colorScheme.error,
-                        size: 48,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _errorMessage!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: _downloadAndOpenPdf,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                )
-              : Stack(
-                  children: [
-                    PDFView(
-                      filePath: _localPdfPath!,
-                      enableSwipe: true,
-                      swipeHorizontal: true,
-                      autoSpacing: true,
-                      pageFling: true,
-                      pageSnap: true,
-                      fitPolicy: FitPolicy.BOTH,
-                      preventLinkNavigation: false,
-                      defaultPage: 0,
-                      onRender: (pages) {
-                        setState(() {
-                          _totalPages = pages!;
-                          _isLoading = false;
-                        });
-                      },
-                      onError: (error) {
-                        print('PDF Error: $error');
-                        setState(() {
-                          _errorMessage = 'Error loading PDF: $error';
-                        });
-                      },
-                      onPageError: (page, error) {
-                        print('Page $page Error: $error');
-                      },
-                      onPageChanged: (page, total) {
-                        if (page != _currentPage - 1) {
-                          _playPageTurnAnimation(page! > _currentPage - 1);
-                        }
-                        setState(() {
-                          _currentPage = page! + 1;
-                        });
-                      },
-                    ),
-                    if (_isLoading)
-                      Container(
-                        color: isDarkMode
-                            ? Colors.black.withOpacity(0.7)
-                            : Colors.white.withOpacity(0.7),
-                        child: const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      ),
-                    AnimatedBuilder(
-                      animation: _pageAnimation,
-                      builder: (context, child) {
-                        return Positioned.fill(
-                          child: IgnorePointer(
-                            child: Transform(
-                              alignment: _isForward
-                                  ? Alignment.centerLeft
-                                  : Alignment.centerRight,
-                              transform: Matrix4.identity()
-                                ..setEntry(3, 2, 0.001)
-                                ..rotateY(_isForward
-                                    ? _pageAnimation.value * 0.5
-                                    : -_pageAnimation.value * 0.5),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: _isForward
-                                        ? Alignment.centerLeft
-                                        : Alignment.centerRight,
-                                    end: _isForward
-                                        ? Alignment.centerRight
-                                        : Alignment.centerLeft,
-                                    colors: [
-                                      Colors.black.withOpacity(
-                                          0.3 * _pageAnimation.value),
-                                      Colors.transparent,
-                                      Colors.black.withOpacity(
-                                          0.3 * _pageAnimation.value),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'PDF viewing is not available here. Open the link in your browser to read.',
+              style: TextStyle(
+                fontSize: 15,
+                color: isDarkMode
+                    ? Colors.white70
+                    : colorScheme.onSurface.withOpacity(0.8),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: _openPdfInBrowser,
+              icon: const Icon(Icons.open_in_browser_rounded),
+              label: const Text('Open in browser'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                backgroundColor: colorScheme.primary,
+                foregroundColor: colorScheme.onPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingState(bool isDarkMode, ColorScheme colorScheme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              color: colorScheme.primary,
+              value: _downloadProgress > 0 && _downloadProgress < 1
+                  ? _downloadProgress
+                  : null,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              _downloadProgress > 0 && _downloadProgress < 1
+                  ? 'Downloading… ${(_downloadProgress * 100).round()}%'
+                  : 'Loading PDF…',
+              style: TextStyle(
+                fontSize: 16,
+                color: isDarkMode
+                    ? Colors.white70
+                    : colorScheme.onSurface.withOpacity(0.8),
+              ),
+            ),
+            if (_downloadProgress > 0 && _downloadProgress < 1) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: 200,
+                child: LinearProgressIndicator(
+                  value: _downloadProgress,
+                  backgroundColor: colorScheme.surfaceContainerHighest,
+                  color: colorScheme.primary,
                 ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(bool isDarkMode, ColorScheme colorScheme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline_rounded,
+              size: 64,
+              color: colorScheme.error,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              _userMessage!,
+              style: TextStyle(
+                fontSize: 16,
+                color: isDarkMode
+                    ? Colors.white70
+                    : colorScheme.onSurface.withOpacity(0.9),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 28),
+            FilledButton.icon(
+              onPressed: _loadPdf,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Try again'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                backgroundColor: colorScheme.primary,
+                foregroundColor: colorScheme.onPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPdfContent(bool isDarkMode, ColorScheme colorScheme) {
+    return Stack(
+      children: [
+        PDFView(
+          filePath: _localPdfPath!,
+          enableSwipe: true,
+          swipeHorizontal: true,
+          autoSpacing: true,
+          pageFling: true,
+          pageSnap: true,
+          fitPolicy: FitPolicy.BOTH,
+          preventLinkNavigation: false,
+          defaultPage: 0,
+          onRender: (pages) {
+            if (mounted) {
+              setState(() {
+                _totalPages = pages ?? 0;
+              });
+            }
+          },
+          onError: (error) {
+            if (mounted) {
+              setState(() {
+                _userMessage = 'The PDF could not be displayed. Please try again.';
+                _isError = true;
+              });
+            }
+          },
+          onPageChanged: (page, total) {
+            if (page != null && mounted) {
+              if (page != _currentPage - 1) {
+                _playPageTurnAnimation(page > _currentPage - 1);
+              }
+              setState(() {
+                _currentPage = page + 1;
+              });
+            }
+          },
+        ),
+        AnimatedBuilder(
+          animation: _pageAnimation,
+          builder: (context, child) {
+            return Positioned.fill(
+              child: IgnorePointer(
+                child: Transform(
+                  alignment: _isForward
+                      ? Alignment.centerLeft
+                      : Alignment.centerRight,
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, 0.001)
+                    ..rotateY(_isForward
+                        ? _pageAnimation.value * 0.5
+                        : -_pageAnimation.value * 0.5),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: _isForward
+                            ? Alignment.centerLeft
+                            : Alignment.centerRight,
+                        end: _isForward
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        colors: [
+                          Colors.black.withOpacity(0.3 * _pageAnimation.value),
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.3 * _pageAnimation.value),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }
