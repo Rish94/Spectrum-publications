@@ -27,8 +27,9 @@ class FooterCard extends StatelessWidget {
     if (metadataProvider.error != null) {
       return Center(
         child: Text(
-          'Error loading metadata: ${metadataProvider.error}',
+          metadataProvider.error!,
           style: TextStyle(color: Theme.of(context).colorScheme.error),
+          textAlign: TextAlign.center,
         ),
       );
     }

@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:spectrum_app/models/content_type.dart';
 import 'package:spectrum_app/services/api_service.dart';
 import 'package:spectrum_app/components/loaders/book_loader.dart';
+import 'package:spectrum_app/utils/api_error_helper.dart';
 
 class SeriesOptionsPage extends StatefulWidget {
   final String seriesId;
@@ -58,7 +59,7 @@ class _SeriesOptionsPageState extends State<SeriesOptionsPage> {
       if (!mounted) return;
 
       setState(() {
-        _error = e.toString();
+        _error = ApiErrorHelper.userMessage(e);
         _isLoading = false;
       });
     }

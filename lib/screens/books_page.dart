@@ -12,6 +12,7 @@ import 'package:spectrum_app/components/loaders/book_loader.dart';
 import 'package:spectrum_app/components/custom_app_bar.dart';
 import 'package:spectrum_app/components/footer_card.dart';
 import 'package:spectrum_app/config/api_config.dart';
+import 'package:spectrum_app/utils/api_error_helper.dart';
 import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -75,7 +76,7 @@ class _BooksPageState extends State<BooksPage> {
       if (!mounted) return;
 
       setState(() {
-        _error = e.toString();
+        _error = ApiErrorHelper.userMessage(e);
         _isLoading = false;
       });
     }

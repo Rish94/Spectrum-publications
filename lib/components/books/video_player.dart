@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:spectrum_app/config/api_config.dart';
+import 'package:spectrum_app/utils/api_error_helper.dart';
 
 class VideoPlayerPage extends StatefulWidget {
   final String videoUrl;
@@ -80,11 +81,12 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
       _initializePlayer();
     } catch (e) {
-      print('Error downloading video: $e');
-      setState(() {
-        _errorMessage = 'Error downloading video: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = ApiErrorHelper.userMessage(e);
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -111,7 +113,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           DeviceOrientation.landscapeRight,
         ],
         errorBuilder: (context, errorMessage) {
-          print('Chewie error: $errorMessage');
+          final message = ApiErrorHelper.userMessage(errorMessage);
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -123,7 +125,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Error: $errorMessage',
+                  message,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                   textAlign: TextAlign.center,
                 ),
@@ -160,11 +162,12 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error initializing video player: $e');
-      setState(() {
-        _errorMessage = 'Error initializing video player: $e';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = ApiErrorHelper.userMessage(e);
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -227,7 +230,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                           Text(
                             _errorMessage!,
                             style: TextStyle(
-                              color: Theme.of(context).colorScheme.onBackground,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 16,
                             ),
                             textAlign: TextAlign.center,

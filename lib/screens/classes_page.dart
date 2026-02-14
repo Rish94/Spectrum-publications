@@ -8,6 +8,7 @@ import 'package:spectrum_app/providers/theme_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:spectrum_app/models/class_model.dart';
 import 'package:spectrum_app/services/api_service.dart';
+import 'package:spectrum_app/utils/api_error_helper.dart';
 import 'package:spectrum_app/components/loaders/book_loader.dart';
 
 class ClassesPage extends StatefulWidget {
@@ -61,7 +62,7 @@ class _ClassesPageState extends State<ClassesPage> {
       if (!mounted) return;
 
       setState(() {
-        _error = e.toString();
+        _error = ApiErrorHelper.userMessage(e);
         _isLoading = false;
       });
     }
@@ -74,7 +75,7 @@ class _ClassesPageState extends State<ClassesPage> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       endDrawer: const AppDrawer(currentRoute: '/series'),
       appBar: CustomAppBar(
         title: '${widget.seriesName} - Classes',
@@ -106,8 +107,8 @@ class _ClassesPageState extends State<ClassesPage> {
                       const Color(0xFF2C2C2C),
                     ]
                   : [
-                      colorScheme.background,
-                      colorScheme.background.withOpacity(0.95),
+                      colorScheme.surface,
+                      colorScheme.surface.withOpacity(0.95),
                     ],
               isVertical: true,
             ),
@@ -291,7 +292,7 @@ class _ClassesPageState extends State<ClassesPage> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      '${classItem.name}',
+                      classItem.name,
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,

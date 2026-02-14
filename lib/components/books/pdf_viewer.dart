@@ -25,7 +25,7 @@ class PdfViewer extends StatefulWidget {
 }
 
 class _PdfViewerState extends State<PdfViewer>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   int _currentPage = 1;
   int _totalPages = 0;
   bool _isLoading = true;
@@ -37,6 +37,8 @@ class _PdfViewerState extends State<PdfViewer>
   final SoundManager _soundManager = SoundManager();
   late AnimationController _animationController;
   late Animation<double> _pageAnimation;
+  late AnimationController _downloadAnimController;
+  late Animation<double> _downloadBounceAnimation;
   bool _isForward = true;
   final Dio _dio = Dio(BaseOptions(
     baseUrl: ApiConfig.baseUrl,
@@ -59,38 +61,48 @@ class _PdfViewerState extends State<PdfViewer>
         curve: Curves.easeInOut,
       ),
     );
+    _downloadAnimController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    )..repeat(reverse: true);
+    _downloadBounceAnimation = Tween<double>(begin: 0, end: -12).animate(
+      CurvedAnimation(
+        parent: _downloadAnimController,
+        curve: Curves.easeInOut,
+      ),
+    );
     _loadPdf();
   }
 
   /// Returns a short, user-friendly message. Never exposes raw exceptions or status codes.
   String _userFriendlyMessage(dynamic e) {
+    final message = e.toString();
+
+    // Any network/connection/API failure → "Network error"
     if (e is DioException) {
       final statusCode = e.response?.statusCode;
-      if (statusCode != null) {
-        if (statusCode == 404) return 'This PDF is not available.';
-        if (statusCode == 403) return 'You don’t have access to this content.';
-        if (statusCode >= 500) return 'The server is temporarily unavailable. Please try again later.';
-        if (statusCode >= 400) return 'We couldn’t load this PDF. Please try again.';
-      }
+      if (statusCode != null && statusCode >= 400) return 'Network error';
       switch (e.type) {
         case DioExceptionType.connectionTimeout:
         case DioExceptionType.sendTimeout:
         case DioExceptionType.receiveTimeout:
-          return 'The request took too long. Check your connection and try again.';
         case DioExceptionType.connectionError:
-          return 'Check your internet connection and try again.';
+          return 'Network error';
         default:
-          return 'We couldn’t load the PDF. Please try again.';
+          return 'Network error';
       }
     }
-    final message = e.toString();
+    if (message.contains('SocketException') ||
+        message.contains('Connection') ||
+        message.contains('connection') ||
+        message.contains('Network')) {
+      return 'Network error';
+    }
+
     if (message.contains('MissingPluginException') ||
         message.contains('path_provider') ||
         message.contains('getTemporaryDirectory')) {
       return 'Please open the app on your phone or tablet to view PDFs.';
-    }
-    if (message.contains('SocketException') || message.contains('Connection')) {
-      return 'Check your internet connection and try again.';
     }
     return 'Something went wrong. Please try again.';
   }
@@ -163,6 +175,7 @@ class _PdfViewerState extends State<PdfViewer>
 
   @override
   void dispose() {
+    _downloadAnimController.dispose();
     _soundManager.dispose();
     _animationController.dispose();
     pdf_file_io.deletePdfFile(_localPdfPath);
@@ -261,41 +274,91 @@ class _PdfViewerState extends State<PdfViewer>
   }
 
   Widget _buildLoadingState(bool isDarkMode, ColorScheme colorScheme) {
+    final isDownloading = _downloadProgress > 0 && _downloadProgress < 1;
+    final primary = colorScheme.primary;
+    final onSurface = isDarkMode
+        ? Colors.white70
+        : colorScheme.onSurface.withOpacity(0.9);
+
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.symmetric(horizontal: 32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(
-              color: colorScheme.primary,
-              value: _downloadProgress > 0 && _downloadProgress < 1
-                  ? _downloadProgress
-                  : null,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              _downloadProgress > 0 && _downloadProgress < 1
-                  ? 'Downloading… ${(_downloadProgress * 100).round()}%'
-                  : 'Loading PDF…',
-              style: TextStyle(
-                fontSize: 16,
-                color: isDarkMode
-                    ? Colors.white70
-                    : colorScheme.onSurface.withOpacity(0.8),
-              ),
-            ),
-            if (_downloadProgress > 0 && _downloadProgress < 1) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: 200,
-                child: LinearProgressIndicator(
-                  value: _downloadProgress,
-                  backgroundColor: colorScheme.surfaceContainerHighest,
-                  color: colorScheme.primary,
+            AnimatedBuilder(
+              animation: _downloadBounceAnimation,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(0, _downloadBounceAnimation.value),
+                  child: child,
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: primary.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: primary.withOpacity(0.3),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.menu_book_rounded,
+                  size: 72,
+                  color: primary,
                 ),
               ),
-            ],
+            ),
+            const SizedBox(height: 28),
+            Text(
+              isDownloading
+                  ? 'Getting your book ready…'
+                  : 'Preparing your book…',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: onSurface,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            if (isDownloading) ...[
+              Text(
+                '${(_downloadProgress * 100).round()}%',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: primary,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  height: 14,
+                  width: 220,
+                  child: LinearProgressIndicator(
+                    value: _downloadProgress,
+                    backgroundColor: colorScheme.surfaceContainerHighest,
+                    color: primary,
+                    minHeight: 14,
+                  ),
+                ),
+              ),
+            ] else
+              SizedBox(
+                width: 36,
+                height: 36,
+                child: CircularProgressIndicator(
+                  color: primary,
+                  strokeWidth: 3,
+                ),
+              ),
           ],
         ),
       ),

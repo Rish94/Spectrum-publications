@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:spectrum_app/components/loaders/book_loader.dart';
 import 'package:spectrum_app/models/subject_model.dart';
 import 'package:spectrum_app/services/api_service.dart';
+import 'package:spectrum_app/utils/api_error_helper.dart';
 
 class SubjectsPage extends StatefulWidget {
   final String seriesId;
@@ -99,7 +100,7 @@ class _SubjectsPageState extends State<SubjectsPage>
       if (!mounted) return;
 
       setState(() {
-        _error = e.toString();
+        _error = ApiErrorHelper.userMessage(e);
         _isLoading = false;
       });
     }
@@ -125,7 +126,7 @@ class _SubjectsPageState extends State<SubjectsPage>
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: colorScheme.surface,
       endDrawer: const AppDrawer(currentRoute: '/subjects'),
       appBar: CustomAppBar(
         title:
@@ -160,8 +161,8 @@ class _SubjectsPageState extends State<SubjectsPage>
                       const Color(0xFF2C2C2C),
                     ]
                   : [
-                      colorScheme.background,
-                      colorScheme.background.withOpacity(0.95),
+                      colorScheme.surface,
+                      colorScheme.surface.withOpacity(0.95),
                     ],
               isVertical: true,
             ),

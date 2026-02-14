@@ -7,6 +7,7 @@ import 'package:spectrum_app/models/series.dart';
 import 'package:spectrum_app/providers/theme_provider.dart';
 import 'package:spectrum_app/screens/classes_page.dart';
 import 'package:spectrum_app/services/api_service.dart';
+import 'package:spectrum_app/utils/api_error_helper.dart';
 import 'package:spectrum_app/config/theme_helper.dart';
 import 'package:go_router/go_router.dart';
 import 'package:spectrum_app/components/loaders/book_loader.dart';
@@ -71,7 +72,7 @@ class _SeriesPageState extends State<SeriesPage> {
       if (!mounted) return;
 
       setState(() {
-        _error = e.toString();
+        _error = ApiErrorHelper.userMessage(e);
         _isLoading = false;
       });
     }

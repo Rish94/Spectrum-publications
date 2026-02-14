@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:spectrum_app/models/metadata_model.dart';
 import 'package:spectrum_app/services/api_service.dart';
+import 'package:spectrum_app/utils/api_error_helper.dart';
 
 class MetadataProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -23,7 +24,7 @@ class MetadataProvider with ChangeNotifier {
       print(_metadata);
       _error = null;
     } catch (e) {
-      _error = e.toString();
+      _error = ApiErrorHelper.userMessage(e);
     } finally {
       _isLoading = false;
       notifyListeners();
