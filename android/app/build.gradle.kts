@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.spectrum_app"
+    namespace = "com.example.spectrum_app"
     compileSdk = 36
     ndkVersion = "27.0.12077973"
 
@@ -27,7 +27,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.spectrum_app"
+        applicationId = "com.example.spectrum_app"
         minSdk = flutter.minSdkVersion // Manually set to 21 for 16KB support
         targetSdk = 35
         versionCode = flutter.versionCode

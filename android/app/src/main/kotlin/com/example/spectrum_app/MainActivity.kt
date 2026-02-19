@@ -1,4 +1,4 @@
-package com.spectrum_app
+package com.example.spectrum_app
 
 import io.flutter.embedding.android.FlutterActivity
 
